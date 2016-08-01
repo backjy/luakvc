@@ -1,3 +1,12 @@
+local type = type
+local table = table
+local pairs = pairs
+local ipairs = ipairs
+local rawget = rawget
+local rawset = rawset
+local string = string
+local getmetatable = getmetatable
+local setmetatable = setmetatable
 
 
 local KVCCenter = {}

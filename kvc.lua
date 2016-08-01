@@ -18,7 +18,7 @@ function KVCCenter:init()
 			observerKey = self._arrayFlag
 		end
 		self:_valueChanged( t, observerKey, value, oldValue)
-		self:_valueChanged( t, "*", value, oldValue)
+		self:_valueChanged( t, "*", value, key)
 	end
 	-- 所有的key 共享一个元表
 	self._weakMt = { __mode = "k"}

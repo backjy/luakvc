@@ -9,7 +9,7 @@ function KVCCenter:init()
 	setmetatable(observers, {__mode = "k"})
 	self._observers = observers
 	self._arrayFlag = "_"
-	-- 当有key 发生变化时会屌用_setter 函数实现 value valueChanged 的监听
+	-- 当有key 发生变化时会调用_setter 函数实现 value valueChanged 的监听
 	self._setter = function( t, key, value)
 		local oldValue = rawget( t, key)
 		rawset( t, key, value)

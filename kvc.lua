@@ -8,20 +8,22 @@ function KVCCenter:init()
 	-- 存放观察者 当观察者为nil 的时候就自动释放
 	setmetatable(observers, {__mode = "k"})
 	self._observers = observers
+	self._arrayFlag = "_"
 	-- 当有key 发生变化时会屌用_setter 函数实现 value valueChanged 的监听
 	self._setter = function( t, key, value)
 		local oldValue = rawget( t, key)
 		rawset( t, key, value)
+		local observerKey = key
 		if type( key) == "number" then
-			self:_valueChanged( t, "*", value, oldValue)
-		else
-			self:_valueChanged( t, key, value, oldValue)
+			observerKey = self._arrayFlag
 		end
+		self:_valueChanged( t, observerKey, value, oldValue)
+		self:_valueChanged( t, "*", value, oldValue)
 	end
 	-- 所有的key 共享一个元表
 	self._weakMt = { __mode = "k"}
 	-- 
-	self._defaultCreator = function()
+	self._defaultCreator = function( keypath, subkey)
 		return {}
 	end
 end
@@ -83,7 +85,7 @@ end
 function KVCCenter:_valueChanged( t, key, newValue, oldValue)
 	local observerData = self._observers[t]
 	if observerData == nil then
-		return
+		return false
 	end
 	local keyObservers = observerData[key]
 	if keyObservers ~= nil then
@@ -93,8 +95,10 @@ function KVCCenter:_valueChanged( t, key, newValue, oldValue)
 			else
 				data.cb( observer, key, newValue, oldValue)
 			end
+			return true
 		end
 	end
+	return false
 end
 
 -- kvc expand dependence string split
@@ -144,7 +148,7 @@ function KVCCenter:_getObserverKey( baseKey, nkey)
 	local linkChar = "."
 	if baseKey == "" then linkChar = "" end
 	if nkey.isArr == true then
-		return baseKey..linkChar.."*"
+		return baseKey..linkChar..self._arrayFlag
 	end
 	return baseKey..linkChar..nkey.key
 end
@@ -168,23 +172,25 @@ function KVCCenter:setKeyPath( target, keypath, value, bdeepc, creator)
 		for idx=1, subKeySize-1 do
 			local tempKey = keys[idx]
 			local tempSubValue = subValue[ tempKey.key]
+			local tempObserverKey = self:_getObserverKey( observerKey, tempKey)
 			-- 判断是否添加不存在的key
-			if tempSubValue == nil then
-				if bdeepc then
-					tempSubValue = creator()
-					subValue[ tempKey.key] = tempSubValue
-				else	
-					print("error: setKeyPath", keypath, tempKey)
-					return false
-				end	
+			if tempSubValue == nil and bdeepc ~= true then
+				print("error: setKeyPath", keypath, tempKey)
+				return false
+			elseif	tempSubValue == nil then
+				tempSubValue = creator( tempObserverKey, tempKey.key)
+				rawset( subValue, tempKey.key, tempSubValue)
 			end
 			subValue = tempSubValue
-			observerKey = self:_getObserverKey( observerKey, tempKey)
+			observerKey = tempObserverKey
 		end
-		observerKey = self:_getObserverKey( observerKey, finalKey)
+		local finalObserverKey = self:_getObserverKey( observerKey, finalKey)
 		local oldValue = rawget( subValue, finalKey.key)
 		rawset( subValue, finalKey.key, value)
-		self:_valueChanged( target, observerKey, value, oldValue)
+		-- 分发最终value发生变化的节点key
+		self:_valueChanged( target, finalObserverKey, value, oldValue)
+		-- 再分发一次 被设置的key 的父节点value 发送变化 最后一个参数为其value发生变化的key
+		self:_valueChanged( target, observerKey..".*", subValue, finalKey.key)
 		return true
 	end
 	return false
@@ -195,10 +201,10 @@ end
 -- @param keypath key 路径
 function KVCCenter:getKeyPath( target, keypath)
 	if target == nil or keypath == nil or keypath == "" then return nil end
-	local keys = stringSplit( keypath, ".")
+	local keys = self:_expandKeys( keypath)
 	local subValue = target
 	for idx, key in ipairs(keys) do
-		subValue = subValue[key]
+		subValue = subValue[key.key]
 		if subValue == nil then return nil end
 	end
 	return subValue

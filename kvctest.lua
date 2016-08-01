@@ -16,10 +16,10 @@ kvc:addObserver( testArray, '*',  observerFunction)
 testArray[1] = {}
 
 -- 数组下标测试 
-kvc:addObserver( testArray, '*.test',  observerFunction)
+kvc:addObserver( testArray, '_.test',  observerFunction)
 kvc:setKeyPath( testArray, "[1].test", "test array key")
 kvc:setKeyPath( testArray, "[2].test", "test2", true)
 
 -- 
-kvc:addObserver( testArray, 'testkey.*.*',  observerFunction)
+kvc:addObserver( testArray, 'testkey._.*',  observerFunction)
 kvc:setKeyPath( testArray, "testkey[1][1]", {"test2"}, true)
